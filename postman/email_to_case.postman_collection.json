@@ -1,0 +1,262 @@
+{
+  "info": {
+    "name": "E-mail → dossier – tests d'API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Collection Postman équivalente à tests/test_api.py. Variable base_url = http://localhost:8000"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/health",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "health"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200', ()=>pm.response.to.have.status(200));",
+              "pm.test('status ok', ()=>pm.expect(pm.response.json().status).to.eql('ok'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Créer un dossier depuis un e-mail",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/dossiers/from-email",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "dossiers",
+            "from-email"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email_id\": \"PM001\",\n  \"pays\": \"FR\",\n  \"langue\": \"fr\",\n  \"semaine\": 3,\n  \"expediteur\": \"marie@delta-negoce.example\",\n  \"objet\": \"Avarie à la livraison – commande FR-12345678, facture INV-2026-11111\",\n  \"corps\": \"Bonjour,\\n\\nà la réception de la commande FR-12345678, deux palettes étaient endommagées. Nous réclamons 1.234,56 EUR au titre de la facture INV-2026-11111 (réserves notées). Numéro client : C100001.\",\n  \"pieces_jointes\": []\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('201', ()=>pm.response.to.have.status(201));",
+              "const d=pm.response.json();",
+              "pm.test('type avarie', ()=>pm.expect(d.type_demande).to.eql('avarie_marchandise'));",
+              "pm.test('montant', ()=>pm.expect(d.montant).to.eql(1234.56));",
+              "pm.test('trace présente', ()=>pm.expect(d.trace.moteur).to.be.a('string'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Lire le dossier",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/dossiers/PM001",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "dossiers",
+            "PM001"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200', ()=>pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dossier inconnu → 404",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/dossiers/INCONNU",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "dossiers",
+            "INCONNU"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('404', ()=>pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Pays invalide → 422",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/dossiers/from-email",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "dossiers",
+            "from-email"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email_id\": \"PM001\",\n  \"pays\": \"IT\",\n  \"langue\": \"fr\",\n  \"semaine\": 3,\n  \"expediteur\": \"marie@delta-negoce.example\",\n  \"objet\": \"Avarie à la livraison – commande FR-12345678, facture INV-2026-11111\",\n  \"corps\": \"Bonjour,\\n\\nà la réception de la commande FR-12345678, deux palettes étaient endommagées. Nous réclamons 1.234,56 EUR au titre de la facture INV-2026-11111 (réserves notées). Numéro client : C100001.\",\n  \"pieces_jointes\": []\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('422', ()=>pm.response.to.have.status(422));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Hors périmètre → ignorer",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/dossiers/from-email",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "dossiers",
+            "from-email"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email_id\": \"PM002\",\n  \"pays\": \"FR\",\n  \"langue\": \"fr\",\n  \"semaine\": 3,\n  \"expediteur\": \"marie@delta-negoce.example\",\n  \"objet\": \"Out of office\",\n  \"corps\": \"I am out of the office.\",\n  \"pieces_jointes\": []\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('decision ignorer', ()=>pm.expect(pm.response.json().decision).to.eql('ignorer'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "KPI en cours",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/metrics/summary",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "metrics",
+            "summary"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200', ()=>pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
